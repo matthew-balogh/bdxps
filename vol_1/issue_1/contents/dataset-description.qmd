@@ -1,0 +1,11 @@
+# About the Spotify Dataset
+
+The dataset [^1] contains the most popular songs on Spotify as of the end of 2023.
+
+The toplist contains tracks regardless to their release year, and popularity of a song is measured in the total number of streams it has accumulated by the time of the data extraction.
+
+A single observation includes information about the title of the song, the count and names of the involved artists, release date, and streams. Whether the given song takes place in a curated playlist or chart of Spotify, Apple, Deezer, or Shazam (only chart info), and if so how many of them, is also indicated for each observation.
+
+Besides these, there are some technical details provided for each song like bpm, danceability, or liveness to name a few.
+
+[^1]: Source: Kaggle, [https://www.kaggle.com/datasets/zeesolver/spotfy](https://www.kaggle.com/datasets/zeesolver/spotfy)

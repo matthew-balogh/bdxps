@@ -1,0 +1,169 @@
+# Dataset Characteristics
+
+```{r, context="setup", include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+library(tidyverse)
+library(ggplot2)
+library(forcats)
+library(scales)
+library(ggthemes)
+
+theme_set(
+  theme_bw() +
+    theme(
+      legend.position = "bottom"
+    )
+)
+
+theme.for.heatmap <- theme_tufte(base_family = "Helvetica") +
+  theme(
+    axis.ticks.x = element_blank(),
+    axis.ticks.y = element_blank(),
+    legend.position = "bottom",
+    legend.key.width = unit(1.75, "cm")
+  )
+```
+
+
+```{r, context="data", include=FALSE}
+df.spotify.original <- read.csv(paste("..", "..", "..", "..", "datasets", "spotify_popular_songs.csv", sep = "/"), check.names = F)
+
+df.spotify <- df.spotify.original
+
+# df.spotify <- df.spotify.original |>
+#   mutate(
+#     in_deezer_playlists = (gsub(",", "", in_deezer_playlists) |> as.integer()),
+#     in_shazam_charts = (gsub(",", "", in_shazam_charts) |> as.integer())
+#   )
+```
+  
+The original dataset consists of the following variables:
+  
+```{r}
+colnames(df.spotify)
+```
+
+Since this report focuses on overall insights and not on specific technical details nor playlists or charts, most of the variables could be ignored with only the following ones [^2] kept for the analysis:
+
+[^2]: note that the variable "artist(s)_name" had been renamed to "artist_s_name"
+
+```{r}
+df.spotify <- df.spotify |>
+  select(
+    track_name,
+    `artist(s)_name`,
+    artist_count,
+    released_year,
+    released_month,
+    released_day,
+    streams
+  ) |>
+  rename(
+    artist_s_name = `artist(s)_name`
+  ) |>
+  mutate(
+    track_name = iconv(track_name, to = "UTF-8")
+  )
+
+colnames(df.spotify)
+```
+
+\newpage
+
+Besides the variable names, the dataset has the following structure:
+
+```{r}
+glimpse(df.spotify)
+```
+
+```{r}
+summary(df.spotify)
+```
+
+The dataset contains 953 observations, that is 953 songs.
+
+Variables of `track_name` and `artist_s_name` are character strings, while the other ones represent numbers. The minimum of artist count (`artist_count`) is 1 representing the main artist, and goes up to a maximum of 8 across all the observations. Release date (`released_year`, `released_month`, `released_day`) goes from 1930 to 2023, streams (`streams`) from around 2700 up to 3.7 billion for a given song.
+
+<!-- The playlist and chart variables (`in_<platform>_playlists`, `in_<platform>_charts`) go from a low of 0 up to a few hundred, thousand, or ten thousand depending on the platform [^3].
+
+[^3]: mutation of 2 columns, are these columns necessary? -->
+
+The following is a few-line sample from the dataset.
+
+```{r}
+df.spotify |>
+  select(
+    track_name,
+    streams,
+    released_year,
+    released_month,
+    released_day,
+    artist_s_name,
+    artist_count
+  ) |>
+  mutate(track_name = str_trunc(track_name, 15)) |>
+  head(n = 3)
+```
+
+\newpage
+## Songs by The Weeknd
+
+As for the songs by _The Weeknd_, there are 37 of them and can be summarized as follows:
+
+```{r}
+df.spotify.artist.theweeknd <- df.spotify |>
+  filter(str_detect(artist_s_name, "The Weeknd"))
+
+summary(df.spotify.artist.theweeknd)
+```
+
+The maximum artist count (`artist_count`) is 3 in this case, indicating that there are songs with 2 additional artists involved. Streams (`streams`) are from around 32 million up to 3.7 billion for a given song.
+
+As for the release date, `released_year` spans the years from 2015 to 2023, `released_month` the months from January to December, `released_day` the days from the 2nd to the 29th day of the month. However, it is important to note, that these are only the two edges of the distributions of the variables, therefore the above summarization does not indicate whether, for example, the artist has a popular song on the list with a release year of 2016, with a release month of February, or with a release day of 15.
+
+The following is a few-line sample from this subset of the dataset.
+
+```{r}
+df.spotify.artist.theweeknd |>
+  select(
+    track_name,
+    streams,
+    released_year,
+    released_month,
+    released_day,
+    artist_s_name,
+    artist_count
+    ) |>
+  mutate(track_name = str_trunc(track_name, 15)) |>
+  head(n = 5)
+```
+
+```{r, context="data", include=FALSE}
+
+df.spotify.artist.theweeknd <- df.spotify.artist.theweeknd |>
+  mutate(
+    collaboration = factor(artist_count)
+  ) |>
+  mutate(
+    collaboration = fct_recode(collaboration,
+      "1" = "1",
+      "2" = "2",
+      "2" = "3"
+    )
+  ) |>
+  mutate(
+    collaboration = factor(collaboration, labels = c("Solo", "With feature"))
+  )
+
+# days_old
+
+df.spotify.artist.theweeknd$days_old <- difftime("2024-01-01",
+  as.Date(paste(df.spotify.artist.theweeknd$released_year, df.spotify.artist.theweeknd$released_month, df.spotify.artist.theweeknd$released_day,
+    sep = "-"
+  ), format = "%Y-%m-%d"), # ! no factor here
+  units = "days"
+) |>
+  round() |>
+  as.numeric()
+```
