@@ -1,0 +1,4 @@
+project:
+  output-dir: docs
+  render: 
+    - vol_1_issue_1.qmd

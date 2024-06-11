@@ -1,6 +1,9 @@
 ---
 title: The Weeknd
 author: Matthew Balogh
+date: today
+toc: true
+toc-depth: 2
 format:
   pdf:
     default: true
@@ -16,9 +19,6 @@ format:
         text: |
             \includepdf[]{cover.pdf}
             \setlength{\footskip}{.75cm}
-toc: true
-toc-depth: 2
-date: today
 filters: [../../remove_title.lua]
 execute:
   echo: false
@@ -29,12 +29,13 @@ knitr:
       width: 60
 ---
 
+
 \newpage
 
 
-_Brief Data Exploratory Stories,_
+_Brief Data Exploration Stories,_
 
-_The Weeknd,_
+_The Weeknd, Blinded by the Streams,_
 
 _by Matthew Balogh,_
 
@@ -48,9 +49,11 @@ Updated at `r format(Sys.Date(), '%d, %B, %Y')`.
 
 
 \newpage
-# About Brief Data Exploratory Stories
 
-_Brief Data Exploratory Stories_ encloses my practical experiments in the field of _Data Analysis_ and _Data Science_, as its name implies, in a short written form.
+
+# About Brief Data Exploration Stories
+
+_Brief Data Exploration Stories_ encloses my practical experiments in the field of _Data Analysis_ and _Data Science_, as its name implies, in a short written form.
 
 It aims to cover exploring a given dataset, analysing it, and making easily interpretable insights, mainly visualizations from it.
 
@@ -67,39 +70,96 @@ I expect that the topics, objectives, and methods used in these notebooks will t
 **LinkedIn:**
 [https://linkedin.com/in/mate-balogh-a137771b7](https://linkedin.com/in/mate-balogh-a137771b7)
 
+
 \newpage
 {{< include ./contents/dataset-description.qmd >}}
+
 
 \newpage
 {{< include ./contents/dataset.qmd >}}
 
+
 \newpage
+
+
 # Insights
 
-## Q1: In which year were these hits released?
+## Q1: How many songs of the artist landed a position on the toplist?
 
-As the bar chart shows below, these songs were released between 2015 and 2023. The artist's hits were released in all years except 2017 of this period. From all the songs that he produced in the year 2022, 16 was popular in 2023. With its tall bar in the chart, these songs - released in that single year - alone contributed to his result with an approximate of 43%.
+The toplist has 37 songs attributed to _The Weeknd_.
+
+```{r}
+df.spotify.artist.theweeknd |>
+  summarize(number_of_tracks = n()) |>
+  select(number_of_tracks) |>
+  print()
+```
+
+## Q2: In which years were the hits from the artist released?
+
+As the bar chart shows below, these songs were released between 2015 and 2023. The artist's hits were released in all years except 2017 of this period. From all the songs that he produced in the year 2022, 16 are among the most-streamed songs. With its tall bar in the chart, these songs - released in that single year - alone contribute 43% of the artist's songs that landed a position on the toplist.
 
 ```{r}
 df.spotify.artist.theweeknd |>
   ggplot() +
-  geom_bar(aes(released_year), fill = "#533b35") +
+  geom_bar(
+    aes(released_year),
+    fill = "#533b35"
+  ) +
   scale_x_continuous(breaks = 2015:2024) +
   labs(
     title = "Number of popular songs by The Weeknd",
-    subtitle = "grouped by Release year from 2015 to 2023",
+    subtitle = "grouped by Release year",
     x = "Release year",
     y = "Track count"
   )
 ```
 
-## Q2: Were these hits solo tracks or included other artists as features?
+## Q3: How many streams have the artist's hits accumulated in total?
 
-A major part of these songs were solo productions. In 2015, only _Solo_ songs were released, that is, without collaboration. However, between 2016 and 2021, tracks include collaborations with another single artist in a somewhat balanced manner.
+The artist's songs from the toplist have accumulated over 23 billion streams in total.
 
-Some of the tracks from 2022 and 2023 have also been released in collaboration with another artist and some of them even have multiple artists involved in the collaboration (_Multiple features_).
+```{r}
+df.spotify.artist.theweeknd |>
+  summarize(total_streams = sum(streams)) |>
+  select(total_streams) |>
+  print()
+```
 
-Interestingly, his tracks from 2022 that made to the toplist were 80% _Solo_ productions, while no _Solo_ track of the artist from 2023 landed a position in the toplist.
+
+## Q4: Did the release year with the most hits also contribute the most streams to the total streams of the artist?
+
+No, the year 2022 with its 16 toplist songs is not even in the top 3 years, in which the released songs accumulated the most streams. Moreover, the years that accumulated the most streams in terms of the toplist have only 4, 2, and 3 songs, respectively. This means that from 2016, 2019, and 2020, only a handful of songs of the artist made it to the toplist, but those are extremely popular tracks.
+
+```{r}
+df.spotify.artist.theweeknd |>
+  group_by(released_year) |>
+  summarize(total_streams_year = sum(streams)) |>
+  ggplot() +
+  geom_bar(
+    aes(released_year, total_streams_year),
+    stat = "identity",
+    fill = "#533b35"
+  ) +
+  scale_x_continuous(breaks = 2015:2024) +
+  scale_y_continuous(
+    labels = label_number(scale_cut = cut_short_scale())
+  ) +
+  labs(
+    title = "Streams of popular songs by The Weeknd",
+    subtitle = "grouped by Release year",
+    x = "Release year",
+    y = "Streams"
+  )
+```
+
+## Q5: Have these hits been solely produced by the artist or in collaboration with others?
+
+A major part of these songs have been solely produced by the artist.
+
+From 2015, only his songs without collaboration (_Solo_) made it to the toplist. However, from the songs he released in 2016, and from 2018 on, numerous collaborative (_With feature_) songs made it to the toplist, especially from the years between 2021 and 2023.
+
+Interestingly, his hits from 2022 were 80% _Solo_ productions, while no _Solo_ track of the artist released in 2023 landed a position in the toplist.
 
 ```{r}
 df.spotify.artist.theweeknd |>
@@ -125,15 +185,30 @@ df.spotify.artist.theweeknd |>
 ```
 
 ```{r}
-# Number of songs by year and collaboration
 df.spotify.artist.theweeknd |>
   group_by(released_year, artist_count) |>
   summarize(track_count = n()) |>
   ggplot() +
+  # stacks by groups
   geom_bar(
     aes(x = released_year, y = track_count, fill = factor(artist_count)),
     stat = "identity",
     position = position_dodge2(preserve = "single")
+  ) +
+  # summary
+  stat_summary(
+    aes(released_year, track_count, group = 1),
+    fun = sum,
+    geom = "point",
+    size = 3,
+    color = "#7d0104"
+  ) +
+  stat_summary(
+    aes(released_year, track_count, group = 1),
+    fun = sum,
+    geom = "line",
+    size = .5,
+    color = "#7d0104"
   ) +
   scale_x_continuous(breaks = 2015:2024) +
   scale_fill_manual(values = c("#f9d087", "#c57613", "#7d0104")) +
@@ -145,7 +220,6 @@ df.spotify.artist.theweeknd |>
     fill = "Artist count"
   )
 
-# Proportions (number) of songs by year and collaboration
 df.spotify.artist.theweeknd |>
   group_by(released_year, collaboration) |>
   summarize(track_count = n()) |>
@@ -166,19 +240,23 @@ df.spotify.artist.theweeknd |>
   )
 ```
 
-\newpage
-## Q3: From these songs of the toplist, which are the most successful ones in terms of streams on the platform?
 
-The most successful ones in terms of total streams are:
+\newpage
+
+
+## Q6: From these hits, which are the most successful ones in terms of streams on the platform?
+
+The most successful ones in terms of lifetime streams are:
 
 ```{r}
 df.spotify.artist.theweeknd |>
-  arrange(desc((streams))) |>
+  arrange(desc(streams)) |>
   slice_head(n = 3) |>
-  select(track_name, streams)
+  select(track_name, streams) |>
+  print()
 ```
 
-Given that songs differ in their release dates, a different list is acquired if the streams are projected to a day as follows:
+Given that songs differ in their release dates, a different list can be acquired if the streams are projected to a day as follows:
 
 ```{r}
 df.spotify.artist.theweeknd |>
@@ -187,59 +265,31 @@ df.spotify.artist.theweeknd |>
   ) |>
   arrange(desc(streams_day)) |>
   slice_head(n = 3) |>
-  select(track_name, streams_day)
+  select(track_name, streams_day) |>
+  print()
 ```
 
 Either way, the track titled as _Blinding Lights_, is at the first place with its 3.7 billion total streams and an almost 2.5 million streams projected to a day.
 
-```{r, include=FALSE}
-
-# Track count heatmap
-
-df.spotify.artist.theweeknd |>
-  complete(released_year = full_seq(released_year, 1), artist_count = full_seq(artist_count, 1)) |>
-  group_by(released_year, artist_count) |>
-  summarize(track_count = if_else(all(is.na(track_name)), NA, n())) |>
-  # plot
-  ggplot(aes(released_year, artist_count)) +
-  geom_tile(
-    aes(fill = track_count),
-    col = "#097190",
-    lwd = 0.5
-  ) +
-  geom_text(aes(label = track_count), col = "#097190", size = 4) +
-  scale_x_continuous(breaks = 2015:2024) +
-  coord_equal() +
-  scale_fill_gradient(
-    low = "#9FDFE9", high = "#F3007F", na.value = "white",
-    breaks = seq(2, 15, by = 3)
-  ) +
-  labs(
-    title = "Number of songs by The Weeknd",
-    x = "Release year",
-    y = "Collaboration",
-    fill = "Track count"
-  ) +
-  theme_tufte(base_family = "Helvetica") +
-  theme(
-    axis.ticks.x = element_blank(),
-    axis.ticks.y = element_blank()
-  )
-```
 
 \newpage
 
+
 ```{r}
+# Top 3 hits by the artist
 
-# Top 3
-
+## lifetime
 df.spotify.artist.theweeknd |>
-  arrange(desc((streams))) |>
+  arrange(desc(streams)) |>
   slice_head(n = 3) |>
   ggplot() +
-  geom_bar(aes(track_name, streams, fill = track_name), stat = "identity") +
+  geom_bar(
+    aes(track_name, streams, fill = track_name),
+    stat = "identity"
+  ) +
   scale_fill_manual(values = c("#7d0104", "#c57613", "#f9d087")) +
   scale_y_continuous(
+    breaks = seq(0, 4e9, by = 5e8),
     labels = label_number(scale_cut = cut_short_scale())
   ) +
   labs(
@@ -252,11 +302,15 @@ df.spotify.artist.theweeknd |>
     legend.position = "none"
   )
 
+## projected to a day
 df.spotify.artist.theweeknd |>
   arrange(desc((streams / days_old))) |>
   slice_head(n = 3) |>
   ggplot() +
-  geom_bar(aes(track_name, (streams / days_old), fill = track_name), stat = "identity") +
+  geom_bar(
+    aes(track_name, (streams / days_old), fill = track_name),
+    stat = "identity"
+  ) +
   scale_fill_manual(values = c("#7d0104", "#c57613", "#f9d087")) +
   scale_y_continuous(
     labels = label_number(scale_cut = cut_short_scale())
@@ -270,115 +324,46 @@ df.spotify.artist.theweeknd |>
   theme(
     legend.position = "none"
   )
-
-# Stream bar chart
-# df.spotify.artist.theweeknd |>
-#   group_by(released_year, collaboration) |>
-#   summarize(streams_in_year = sum(streams)) |>
-#   ggplot() +
-#   geom_bar(aes(released_year, streams_in_year, fill = collaboration),
-#     stat = "identity",
-#     position = position_dodge2(preserve = "single")
-#   ) +
-#   stat_summary(
-#     aes(released_year, streams_in_year, group = 1),
-#     fun = sum,
-#     geom = "point",
-#     size = 3,
-#     color = "#7d0104"
-#   ) +
-#   stat_summary(
-#     aes(released_year, streams_in_year, group = 1),
-#     fun = sum,
-#     geom = "line",
-#     size = .5,
-#     color = "#7d0104"
-#   ) +
-#   scale_x_continuous(breaks = 2015:2024) +
-#   scale_fill_manual(values = c("#f9d087", "#533b35")) +
-#   labs(
-#     title = "Streams of popular songs by The Weeknd",
-#     subtitle = "grouped by Release year and Collaboration type,\nthe trend without # separation also indicated",
-#     x = "Release year",
-#     y = "Streams",
-#     fill = "Collaboration type"
-#   )
-#
-# # Stream fill chart
-# df.spotify.artist.theweeknd |>
-#   group_by(released_year, collaboration) |>
-#   summarize(streams_in_year = sum(streams)) |>
-#   ggplot() +
-#   geom_bar(aes(released_year, streams_in_year, fill = collaboration),
-#     stat = "identity",
-#     position = "fill"
-#   ) +
-#   scale_x_continuous(breaks = 2015:2024) +
-#   scale_fill_manual(values = c("#f9d087", "#533b35")) +
-#   labs(
-#     title = "Proportions of streams of popular songs by The Weeknd",
-#     subtitle = "grouped by Release year,\nbased on Collaboration type",
-#     x = "Release year",
-#     y = "Proportion",
-#     fill = "Collaboration type"
-#   )
-
-
 ```
 
 
-## Q4: Have these top 3 songs of the artist been out for a while or are there fresh hits in it?
+\newpage
 
-The artist's top 3 songs, considering lifetime total streams, all have been released back in 2019, 2016, and 2015 respectively. Even though older songs have better chance to accumulate more total streams compared to fresh ones, his top 2 songs released in 2019 and 2016 separately have more streams than the one released in 2015.
+
+## Q7: Did older songs accumulate more streams?
+
+Previously, it has been shown that only a few songs from the past overpassed the streams of more than a dozen songs in one of the recent years. However, to the answer the question, one should look at the data in terms of individual observations, that is in terms of single songs.
+
+The artist's top 3 songs, considering lifetime total streams, all have been released back in 2019, 2016, and 2015, respectively. Interestingly, as one goes down the list, both the streams and release year decrease. This means that even though songs back from 2015, 2016, or 2019 have accumulated the most streams, the song released in 2019 has a better position than the one released in 2016, and the one from 2016 has more streams than the one from 2015.
 
 ```{r}
 df.spotify.artist.theweeknd |>
-  arrange(desc((streams))) |>
+  arrange(desc(streams)) |>
   slice_head(n = 3) |>
   select(track_name, streams, released_year)
 ```
 
-If streams are projected to a day of the lifetime of a song, then the result includes two relatively fresh songs from 2022, and 2023, yet the first place is still occupied by the same song from 2019, as it has been already indicated before.
-
-```{r}
-df.spotify.artist.theweeknd |>
-  mutate(
-    streams_day = (streams / days_old)
-  ) |>
-  arrange(desc(streams_day)) |>
-  slice_head(n = 3) |>
-  select(track_name, streams_day, released_year)
-```
-
-### Q4.1: What about the top 10?
-
-Taking a look at the top 10 songs of the artist in the lists below, it is hard to tell whether fresh or old songs have accumulated more streams.
-
-```{r}
-df.spotify.artist.theweeknd |>
-  arrange(desc((streams))) |>
-  slice_head(n = 10) |>
-  select(track_name, released_year) |>
-  mutate(track_name = str_trunc(track_name, 40))
-```
-
-```{r}
-df.spotify.artist.theweeknd |>
-  mutate(
-    streams_day = (streams / days_old)
-  ) |>
-  arrange(desc(streams_day)) |>
-  slice_head(n = 10) |>
-  select(track_name, released_year) |>
-  mutate(track_name = str_trunc(track_name, 40))
-```
-
+Taking a look at the top 10 songs of the artist in the list below, it is hard to tell whether a relationship between release year and streams exists.
 A scatterplot of streams over the release year of songs could be a better way to answer this question.
 
 ```{r}
 df.spotify.artist.theweeknd |>
+  arrange(desc(streams)) |>
+  slice_head(n = 10) |>
+  select(track_name, streams, released_year) |>
+  mutate(track_name = str_trunc(track_name, 15))
+```
+
+
+```{r}
+df.spotify.artist.theweeknd |>
   ggplot() +
-  geom_point(aes(released_year, streams), col = "#7d0104", size = 2, alpha = .5) +
+  geom_point(
+    aes(released_year, streams),
+    col = "#7d0104",
+    size = 3,
+    alpha = .5
+  ) +
   scale_x_continuous(breaks = 2015:2024) +
   labs(
     title = "Streams of popular songs by The Weeknd",
@@ -388,9 +373,11 @@ df.spotify.artist.theweeknd |>
   )
 ```
 
-The scatterplot depicts that as release year increases, that is the more fresh a song is, streams count seems to decrease, that is the less streams a song has (except a few outliers - the top 3 songs). Based on the visualization, there might be a correlation between the two variable and if there is, it is probably negative. Visualization, however, can easily deceive one.
+On the scatterplot, it is visible how the previously observed, top 3 songs relate to each other. Their streams increase as their release year increases.
 
-As it appears, there really is a negative correlation, however, as the top 3 list and the coefficient of determination show, it is not a very reliable indicator.
+However, other than these few data points on the scatter plot, it appears that, in overall, streams of a single song decreases as the relase year increases. Based on the visualization, there might be a correlation between the two variable and if there is, it is probably negative. Visualization, however, can easily be deceptive.
+
+As the table below indicates, there really is a negative correlation, however, as the outlier songs and the coefficient of determination show, it is not a strong indicator.
 
 ```{r}
 cor_streams_released_year <- cor(df.spotify.artist.theweeknd$released_year, df.spotify.artist.theweeknd$streams)
@@ -402,43 +389,200 @@ cor_matrix <- c(
   round(2) |>
   matrix(ncol = 2)
 
-colnames(cor_matrix) <- c("Correlation with Streams", "Coefficient of determination (%)")
-rownames(cor_matrix) <- c("Release year")
+colnames(cor_matrix) <- c("Correlation", "Coefficient of det. (%)")
+rownames(cor_matrix) <- c("Release year / Streams")
 
 cor_matrix |>
   as.table() |>
   print()
 ```
 
-As expected, the scatterplot of streams projected to a day of a song's lifetime over the release year shows a more rectangular-ish positioning, that is, other than a few outliers (the top 3 songs), the streams count projected to a day does not change with the change of release year. This is verified by the table below, where the correlation coefficient is very close to 0 and where the coefficient of determination is extremely low.
+
+## Q8: How does the artist's top 3 songs compare to other songs on the toplist?
 
 ```{r}
-df.spotify.artist.theweeknd |>
+#| fig.height: 7.2
+
+df.spotify |>
+  arrange(desc(streams)) |>
+  slice_head(n = 40) |>
+  mutate(
+    track_name = str_trunc(track_name, 20)
+  ) |>
+  mutate(
+    track_name = factor(track_name, levels = rev(track_name))
+  ) |>
   ggplot() +
-  geom_point(aes(released_year, (streams / days_old)), col = "#7d0104", size = 2, alpha = .5) +
-  scale_x_continuous(breaks = 2015:2024) +
+  geom_point(
+    aes(track_name, streams, fill = ifelse(str_detect(artist_s_name, "The Weeknd"), "A", "B")),
+    shape = 21,
+    size = 2.5,
+    stat = "identity"
+  ) +
+  coord_flip() +
+  scale_y_continuous(
+    breaks = seq(0, 4e9, by = 5e8),
+    labels = label_number(scale_cut = cut_short_scale())
+  ) +
+  scale_fill_manual(
+    values = c("#533b35", "#f9d087"),
+    labels = c("The Weeknd", "Other artist")
+  ) +
   labs(
-    title = "Streams of popular songs by The Weeknd",
-    subtitle = "projected to a day,\nscattered over Release year",
-    x = "Release year",
-    y = "Streams"
+    title = "40 most-popular songs on Spotify",
+    subtitle = "based on total streams",
+    x = NULL,
+    y = "Streams",
+    fill = "Artist"
   )
 ```
 
+
+\newpage
+
+
+_The Weeknd_'s top 3 songs are on the list of top 50 most-popular songs on Spotify, with positions of 1, 10, and 34, respectively.
+
+It appears that the song _Blinding Lights_ is not only the best-performing track in the artist's discography but leads the toplist with a streams count close to 4 billion.
+
+The song at the second place of the toplist, _Shape of You_ by _Ed Sheeran_, is quite close to _Blinding Lights_ but other songs on the list have way less streams compared to these two extremely popular songs on the platform.
+
+## Q9: In terms of number of hits, how does the artist compare to others? [^4]
+
 ```{r}
-cor_streams_day_released_year <- cor(df.spotify.artist.theweeknd$released_year, (df.spotify.artist.theweeknd$streams / df.spotify.artist.theweeknd$days_old))
+#| fig.height: 7.2
 
-cor_matrix <- c(
-  cor_streams_day_released_year,
-  cor_streams_day_released_year^2 * 100
-) |>
-  round(2) |>
-  matrix(ncol = 2)
-
-colnames(cor_matrix) <- c("Correlation with Streams (projected to a day)", "Coefficient of determination (%)")
-rownames(cor_matrix) <- c("Release year")
-
-cor_matrix |>
-  as.table() |>
-  print()
+df.spotify |>
+  separate_rows(artist_s_name, sep = ",\\s*") |>
+  rename(
+    artist = artist_s_name
+  ) |>
+  group_by(artist) |>
+  summarize(total_songs = n()) |>
+  arrange(desc(total_songs)) |>
+  slice_head(n = 40) |>
+  mutate(
+    artist = str_trunc(artist, 25)
+  ) |>
+  mutate(
+    artist = factor(artist, levels = rev(artist))
+  ) |>
+  ggplot() +
+  geom_point(
+    aes(artist, total_songs, fill = ifelse(str_detect(artist, "The Weeknd"), "A", "B")),
+    shape = 21,
+    stat = "identity",
+    size = 2.5
+  ) +
+  coord_flip() +
+  scale_y_continuous(breaks = seq(0, 40, by = 5)) +
+  scale_fill_manual(
+    values = c("#533b35", "#f9d087"),
+    labels = c("The Weeknd", "Other artist")
+  ) +
+  labs(
+    title = "40 most-popular artists on Spotify",
+    subtitle = "based on total number of hits",
+    x = NULL,
+    y = "Track count",
+    fill = "Artist"
+  )
 ```
+
+Based on the number of hits on the toplist, _The Weeknd_ has a 3rd place with his 37 songs.
+
+The 1st and 2nd places are occupied by _Bad Bunny_, and _Taylor Swift_ with 40, and 38 songs, respectively.
+
+
+## Q10: In terms of total streams, how does the artist compare to others? [^4]
+
+```{r}
+#| fig.height: 7.2
+
+df.spotify |>
+  separate_rows(artist_s_name, sep = ",\\s*") |>
+  rename(
+    artist = artist_s_name
+  ) |>
+  group_by(artist) |>
+  summarize(total_streams = sum(streams)) |>
+  arrange(desc(total_streams)) |>
+  mutate(
+    artist = str_trunc(artist, 25)
+  ) |>
+  mutate(
+    artist = factor(artist, levels = rev(artist))
+  ) |>
+  slice_head(n = 40) |>
+  ggplot() +
+  geom_point(
+    aes(artist, total_streams, fill = ifelse(str_detect(artist, "The Weeknd"), "A", "B")),
+    shape = 21,
+    size = 2.5,
+    stat = "identity"
+  ) +
+  coord_flip() +
+  scale_y_continuous(
+    breaks = seq(0, 24e9, by = 2.5e9),
+    labels = label_number(scale_cut = cut_short_scale())
+  ) +
+  scale_fill_manual(
+    values = c("#533b35", "#f9d087"),
+    labels = c("The Weeknd", "Other artist")
+  ) +
+  labs(
+    title = "40 most-popular artists on Spotify",
+    subtitle = "based on total streams of hits",
+    x = NULL,
+    y = "Total streams",
+    fill = "Artist"
+  )
+```
+
+
+The first two positions on the list are very close to each other and it is difficult to tell the difference. A closer look at these two reveals that the difference is around 100 million streams.
+
+```{r}
+
+df.spotify |>
+  separate_rows(artist_s_name, sep = ",\\s*") |>
+  rename(
+    artist = artist_s_name
+  ) |>
+  group_by(artist) |>
+  summarize(total_streams = sum(streams)) |>
+  arrange(desc(total_streams)) |>
+  mutate(
+    artist = str_trunc(artist, 25)
+  ) |>
+  mutate(
+    artist = factor(artist, levels = rev(artist))
+  ) |>
+  slice_head(n = 2) |>
+  ggplot() +
+  geom_point(
+    aes(artist, total_streams, fill = ifelse(str_detect(artist, "The Weeknd"), "A", "B")),
+    shape = 21,
+    size = 5,
+    stat = "identity"
+  ) +
+  coord_flip() +
+  scale_y_continuous(
+    limits = c(23.8e9, 23.95e9),
+    breaks = seq(23.8e9, 23.95e9, by = .025e9),
+    labels = label_number(scale_cut = cut_short_scale())
+  ) +
+  scale_fill_manual(
+    values = c("#533b35", "#f9d087"),
+    labels = c("The Weeknd", "Other artist")
+  ) +
+  labs(
+    title = "2 most-popular artists on Spotify",
+    subtitle = "based on total streams of hits",
+    x = NULL,
+    y = "Total streams",
+    fill = "Artist"
+  )
+```
+
+[^4]: Counting is based on whether the artist is part of the production, regardless to being the lead artist of the song or a feature.
